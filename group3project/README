@@ -1,0 +1,72 @@
+INSTALLING
+==========
+
+These Python programs require Python 2.7.12 and the PyCrypto package. 
+Install PyCrypto with $ sudo pip install pycrypto
+Generating certificates requires openssl, which is normally installed, but if not: 
+$ sudo apt-get update && sudo apt-get install openssl
+(if you don't use Python much, pip might not be installed either: $ sudo apt-get install python-pip)
+
+
+WARNING
+=======
+
+It is probably not a good idea to run the client and server from the same directory on the same machine, as it can lead to existing files being overwritten with the encrypted version of themselves.
+
+
+CERTIFICATES 
+============
+
+The Makefile includes commands to generate certificates for the client, server, and CA. Just run make and the keys and certificates will be created in subdirectories. If running client and server on separate machines, you will need to copy the CA root cert to each machine so they can both use it to verify the cert they receive from the other party. If using multiple machines, the best thing to do is generate all the certs on one, then copy the necessary ones to the other machine. 
+
+You can also use the Makefile to generate only keys and certs if you copy the CA data to second machine, but the simplest thing to do is generate everything in the same place and then copy them where you need them. Don't mess with the CA files, other than copying the root cert, unless you know what you're doing.
+
+If you want to use your own certificates, they must be in PEM format. Client and server programs both take a CA root certificate on the command line, which is used to verify the cert received from the other party over the network. You can have any number of certs in the chain, but eventually it must be signed by the root CA that the other party trusts. Multiple certs in a chain in the file would like this:
+-----BEGIN CERTIFICATE-----
+... (certificate for your server)...
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+... (some other CA signed by root)...
+-----END CERTIFICATE-----
+
+But there's no need to worry about any of this -- you can generate new keys and certs by running make.
+
+
+EXAMPLE USAGE
+=============
+
+$ ./server.py
+Usage:
+	$ server <port> </path/to/server/private/key> </path/to/server/cert> </path/to/ca/root/cert>
+$ ./server 8888 key_files/server.pem cert_files/server_cert.crt ca_files/ca_root_cert.crt
+
+$ ./client.py
+Usage:
+	$ client <server addr> <server port> </path/to/client/private/key> </path/to/client/cert> </path/to/ca/root/cert>
+# ./client.py 35.185.60.163 8888 key_files/client.pem cert_files/client_cert.crt ca_files/ca_root_cert.crt
+
+
+CLIENT COMMANDS
+==============
+All commands are case-sensitive
+
+"put <filename> N" - write <filename> onto the server unencrypted.
+
+"put <filename> E <password>" - write <filename> onto the server, encryted using <password> as a basis. <password> must be exactly 8 characetrs, with no spaces.
+
+"stop" - Exit the application.
+
+
+NOTE ON PATHNAMES
+=================
+
+The client can enter any relative or absolute local pathname when putting a file, and the file will be stored in the server's directory. Then to get it back, the client would ask for the filename only, not the full path. Good example:
+
+$ put /home/user/project/test/test_file.txt N
+$ get test_file.txt N
+
+This would not work:
+
+$ put /home/user/project/test/test_file.txt N
+$ get /home/user/project/test/test_file.txt N
+
